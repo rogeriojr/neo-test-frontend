@@ -1,0 +1,41 @@
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: "Roboto", "Helvetica Neue", sans-serif;
+  background-color: rgb(44, 44, 44);
+  background-image: url(https://app.neoidea.com.br/sistema/db/Layout/76_bg_full.jpg) !important;
+  background-size: cover;
+  background-position: center;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+video::-webkit-media-controls-fullscreen-button,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-volume-slider {
+  display: none;
+}
