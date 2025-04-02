@@ -5,6 +5,9 @@ import styled from "styled-components";
 import { CarouselItem } from "../types";
 import { useCarouselStore } from "../stores/carouselStore";
 import { useModalStore } from "../stores/modalStore";
+import { TbHandClick } from "react-icons/tb";
+import { useProfileModalStore } from "../stores/profileModalStore";
+import ProfileModal from "./ProfileModal";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
@@ -35,18 +38,18 @@ const SlideItem = styled.div<SlideItemProps>`
   position: relative;
   height: auto;
   margin: 0 15px;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: visible;
   cursor: pointer;
   transform-style: preserve-3d;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   transform: ${(props) =>
     props.active
-      ? "rotateY(0deg) scale(1.08)"
+      ? "rotateY(0deg) scale(1.1)"
       : props.position === "left"
-      ? "rotateY(25deg) scale(0.85)"
+      ? "rotateY(15deg) scale(0.85)"
       : props.position === "right"
-      ? "rotateY(-25deg) scale(0.85)"
+      ? "rotateY(-15deg) scale(0.85)"
       : "rotateY(0deg) scale(0.85)"};
   z-index: ${(props) => (props.active ? 10 : 1)};
   perspective: 1000px;
@@ -63,12 +66,62 @@ const SlideImage = styled.img`
   height: auto;
   object-fit: cover;
   transition: all 0.4s ease;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
 
   ${SlideItem}:hover & {
     transform: scale(1.05);
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+  }
+`;
+
+const ClickIcon = styled.div`
+  position: absolute;
+  right: 10px;
+  top: 40px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 20;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  opacity: 0.9;
+
+  &:hover {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  svg {
+    font-size: 26px;
+    color: #333;
+  }
+
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    right: 8px;
+    top: 30px;
+
+    svg {
+      font-size: 22px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    width: 36px;
+    height: 36px;
+    right: 5px;
+    top: 20px;
+
+    svg {
+      font-size: 20px;
+    }
   }
 `;
 
@@ -99,16 +152,16 @@ interface SlideReflectionProps {
 
 const SlideReflection = styled.div<SlideReflectionProps>`
   position: absolute;
-  bottom: -100%;
+  bottom: -80%;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: 80%;
   background-image: ${(props) => `url(${props.image})`};
   background-size: cover;
   transform: rotateX(180deg);
-  opacity: 0.7;
+  opacity: 0.6;
   filter: blur(1px);
-  border-radius: 8px;
+  border-radius: 12px;
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0));
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -121,7 +174,7 @@ const SlideReflection = styled.div<SlideReflectionProps>`
 
 const ProgressBar = styled.div`
   position: absolute;
-  bottom: 0px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   width: 60%;
@@ -136,6 +189,18 @@ const ProgressBar = styled.div`
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.9);
+  }
+
+  @media (max-width: 768px) {
+    width: 80%;
+    height: 16px;
+    bottom: 8px;
+  }
+
+  @media (max-width: 480px) {
+    width: 90%;
+    height: 12px;
+    bottom: 5px;
   }
 `;
 
@@ -169,7 +234,22 @@ const ProgressIndicator = styled.div<ProgressIndicatorProps>`
   &:hover::after {
     transform: translate(50%, -50%) scale(1.1);
   }
+
+  @media (max-width: 768px) {
+    &::after {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    &::after {
+      width: 24px;
+      height: 24px;
+    }
+  }
 `;
+
 const Carousel: React.FC<CarouselProps> = () => {
   const items = useCarouselStore((state) => state.items);
   const isLoading = useCarouselStore((state) => state.isLoading);
@@ -177,6 +257,13 @@ const Carousel: React.FC<CarouselProps> = () => {
   const fetchItems = useCarouselStore((state) => state.fetchItems);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [progress, setProgress] = useState(0);
+
+  // Usar o store global para o modal de perfil
+  const isProfileModalOpen = useProfileModalStore((state) => state.isOpen);
+  const setProfileModalOpen = useProfileModalStore((state) => state.setOpen);
+
+  // Função para fechar o modal de perfil
+  const handleCloseProfileModal = () => setProfileModalOpen(false);
 
   const setContactModal = useModalStore((state) => state.setContactModal);
   const setPodcastModal = useModalStore((state) => state.setPodcastModal);
@@ -265,11 +352,34 @@ const Carousel: React.FC<CarouselProps> = () => {
         },
       },
       {
+        breakpoint: 992,
+        settings: {
+          slidesToShow: 3,
+          slidesToScroll: 1,
+          centerMode: true,
+          centerPadding: "10px",
+        },
+      },
+      {
         breakpoint: 768,
         settings: {
           slidesToShow: 1,
           slidesToScroll: 1,
           centerMode: true,
+          centerPadding: "40px",
+          speed: 400,
+          touchThreshold: 8,
+        },
+      },
+      {
+        breakpoint: 480,
+        settings: {
+          slidesToShow: 1,
+          slidesToScroll: 1,
+          centerMode: true,
+          centerPadding: "20px",
+          speed: 300,
+          touchThreshold: 10,
         },
       },
     ],
@@ -293,6 +403,47 @@ const Carousel: React.FC<CarouselProps> = () => {
 
   console.log("Itens do carrossel:", carouselItems);
 
+  const Tooltip = styled.div<{ active: boolean }>`
+    position: absolute;
+    top: 40px;
+    right: 60px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    white-space: nowrap;
+    opacity: ${(props) => (props.active ? 1 : 0)};
+    visibility: ${(props) => (props.active ? "visible" : "hidden")};
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    z-index: 30;
+    pointer-events: none;
+    font-weight: 500;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -6px;
+      transform: translateY(-50%);
+      border-width: 6px 0 6px 6px;
+      border-style: solid;
+      border-color: transparent transparent transparent rgba(0, 0, 0, 0.8);
+    }
+
+    @media (max-width: 768px) {
+      top: 30px;
+      right: 55px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 480px) {
+      display: none; /* Ocultar em telas muito pequenas para evitar sobreposição */
+    }
+  `;
+
   return (
     <CarouselContainer>
       {/* @ts-ignore */}
@@ -307,14 +458,18 @@ const Carousel: React.FC<CarouselProps> = () => {
               : "center";
 
           return (
-            <SlideItem
-              key={item.id}
-              onClick={() => handleItemClick(item)}
-              active={isActive}
-              position={position}
-            >
+            <SlideItem key={item.id} active={isActive} position={position}>
               <SlideImage src={item.imagem} alt={item.titulo} />
               <SlideReflection image={item.imagem} />
+              <ClickIcon
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleItemClick(item);
+                }}
+              >
+                <TbHandClick />
+              </ClickIcon>
+              <Tooltip active={isActive}>Clique para ver os detalhes!</Tooltip>
             </SlideItem>
           );
         })}
@@ -334,6 +489,12 @@ const Carousel: React.FC<CarouselProps> = () => {
         <ProgressIndicator progress={progress} />
       </ProgressBar>
       {/* Os modais foram movidos para o Layout.tsx para cobrir toda a tela */}
+      {isProfileModalOpen && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={handleCloseProfileModal}
+        />
+      )}
     </CarouselContainer>
   );
 };

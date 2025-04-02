@@ -9,10 +9,37 @@ const getEnv = (key: string, defaultValue: string = ''): string => {
   return defaultValue;
 };
 
+// Configurações principais
 const MDI_ID = getEnv('VITE_MDI_ID', '172'); // Valor padrão para o Biquini Cavadão
+const AUTH_TOKEN_KEY = getEnv('VITE_AUTH_TOKEN_KEY', '@NeoIdea:token');
+const USER_DATA_KEY = getEnv('VITE_USER_DATA_KEY', '@NeoIdea:user');
+
+// URLs base
+const API_BASE_URL = getEnv('VITE_API_BASE_URL', 'https://app.neoidea.com.br/sistema/index.php?r=outlet/services');
+const ELIVE_API_URL = getEnv('VITE_ELIVE_API_URL', 'https://elive.neoidea.com.br/services.php');
+const PODCAST_API_URL = getEnv('VITE_PODCAST_API_URL', 'https://app.neoidea.com.br/sistema/neowebservice/servercontent_cloudfront.php');
+
+// Endpoints
+const ENDPOINTS = {
+  AUTH: getEnv('VITE_ENDPOINT_AUTH', 'autenticaFaExterno'),
+  GET_LAYOUT: getEnv('VITE_ENDPOINT_GET_LAYOUT', 'getLayoutExterno'),
+  GET_CAROUSEL: getEnv('VITE_ENDPOINT_GET_CAROUSEL', 'getCarrosselExterno'),
+  VERIFY_AUTH: getEnv('VITE_ENDPOINT_VERIFY_AUTH', 'verificaAutenticacaoExterno'),
+  RECOVER_PASSWORD: getEnv('VITE_ENDPOINT_RECOVER_PASSWORD', 'recuperarSenhaFaExterno'),
+  AUTH2: getEnv('VITE_ENDPOINT_AUTH2', 'auth2Externo'),
+  VALIDATE_AUTH2: getEnv('VITE_ENDPOINT_VALIDATE_AUTH2', 'validarAuth2Externo'),
+  GENERATE_AUTH2_CHALLENGE: getEnv('VITE_ENDPOINT_GENERATE_AUTH2_CHALLENGE', 'gerarDesafioAuth2Externo'),
+  VALIDATE_AUTH2_CHALLENGE: getEnv('VITE_ENDPOINT_VALIDATE_AUTH2_CHALLENGE', 'validarDesafioAuth2Externo'),
+  GET_CONTACT: getEnv('VITE_ENDPOINT_GET_CONTACT', 'getContatoExterno'),
+  SEND_CONTACT: getEnv('VITE_ENDPOINT_SEND_CONTACT', 'enviarMensagemContatoExterno'),
+};
+
+// Configurações adicionais
+const DEFAULT_TIMEZONE = getEnv('VITE_DEFAULT_TIMEZONE', 'America/Sao_Paulo');
+const CRYPTO_METHOD = getEnv('VITE_CRYPTO_METHOD', 'sha1');
 
 const api = axios.create({
-  baseURL: 'https://app.neoidea.com.br/sistema/index.php?r=outlet/services',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -20,7 +47,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('@NeoIdea:token');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -42,7 +69,7 @@ export const getLayoutExterno = async () => {
       }
     };
 
-    const response = await api.post('/getLayoutExterno', formData, config);
+    const response = await api.post(`/${ENDPOINTS.GET_LAYOUT}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao obter layout:', error);
@@ -56,7 +83,7 @@ export const autenticaFaExterno = async (data: AuthData) => {
     const emailEncriptado = CryptoJS.SHA1(data.email).toString();
 
     const formData = new FormData();
-    formData.append('metodo', 'sha1');
+    formData.append('metodo', CRYPTO_METHOD);
     formData.append('email', emailEncriptado);
     formData.append('senha', senhaEncriptada);
     formData.append('mdi_id', MDI_ID);
@@ -67,17 +94,17 @@ export const autenticaFaExterno = async (data: AuthData) => {
       }
     };
 
-    const response = await api.post('/autenticaFaExterno', formData, config);
+    const response = await api.post(`/${ENDPOINTS.AUTH}`, formData, config);
 
     if (response.data && response.data.retorno && response.data.dados && response.data.dados.token) {
-      localStorage.setItem('@NeoIdea:token', response.data.dados.token);
+      localStorage.setItem(AUTH_TOKEN_KEY, response.data.dados.token);
 
       const userData = {
         id: response.data.dados.codigo,
         nome: response.data.dados.nome,
         email: response.data.dados.email
       };
-      localStorage.setItem('@NeoIdea:user', JSON.stringify(userData));
+      localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
     } else if (response.data && !response.data.retorno) {
       throw new Error(response.data.descricao || response.data.erro || 'Falha na autenticação');
     }
@@ -91,7 +118,7 @@ export const autenticaFaExterno = async (data: AuthData) => {
 
 export const getCarrosselExterno = async (params?: { tipo?: string; id?: string; mdi_id?: string }) => {
   try {
-    const url = '/getCarrosselExterno';
+    const url = `/${ENDPOINTS.GET_CAROUSEL}`;
 
     const formData = new FormData();
     formData.append('mdi_id', params?.mdi_id || MDI_ID);
@@ -139,7 +166,7 @@ export const verificaAutenticacaoExterno = async (lang?: string): Promise<ApiRes
       }
     };
 
-    const response = await api.post('/verificaAutenticacaoExterno', formData, config);
+    const response = await api.post(`/${ENDPOINTS.VERIFY_AUTH}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao verificar autenticação:', error);
@@ -162,7 +189,7 @@ export const recuperarSenhaFaExterno = async (email: string, lang?: string): Pro
       }
     };
 
-    const response = await api.post('/recuperarSenhaFaExterno', formData, config);
+    const response = await api.post(`/${ENDPOINTS.RECOVER_PASSWORD}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao recuperar senha:', error);
@@ -185,7 +212,7 @@ export const auth2Externo = async (email: string, lang?: string): Promise<ApiRes
       }
     };
 
-    const response = await api.post('/auth2Externo', formData, config);
+    const response = await api.post(`/${ENDPOINTS.AUTH2}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao gerar desafio de autenticação:', error);
@@ -209,7 +236,7 @@ export const validarAuth2Externo = async (data: Auth2ValidateData): Promise<ApiR
       }
     };
 
-    const response = await api.post('/validarAuth2Externo', formData, config);
+    const response = await api.post(`/${ENDPOINTS.VALIDATE_AUTH2}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao validar desafio de autenticação:', error);
@@ -233,7 +260,7 @@ export const gerarDesafioAuth2Externo = async (mdi: number | string, numero_seri
       }
     };
 
-    const response = await api.post('/gerarDesafioAuth2Externo', formData, config);
+    const response = await api.post(`/${ENDPOINTS.GENERATE_AUTH2_CHALLENGE}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao gerar desafio de autenticação para aplicativo:', error);
@@ -258,7 +285,7 @@ export const validarDesafioAuth2Externo = async (data: Auth2ValidateWithEmailDat
       }
     };
 
-    const response = await api.post('/validarDesafioAuth2Externo', formData, config);
+    const response = await api.post(`/${ENDPOINTS.VALIDATE_AUTH2_CHALLENGE}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao validar desafio de autenticação para aplicativo:', error);
@@ -277,7 +304,7 @@ export const getContactInfo = async (): Promise<ApiResponse> => {
       }
     };
 
-    const response = await api.post('/getContatoExterno', formData, config);
+    const response = await api.post(`/${ENDPOINTS.GET_CONTACT}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao obter informações de contato:', error);
@@ -299,7 +326,7 @@ export const sendContactMessage = async (data: { nome: string; email: string; me
       }
     };
 
-    const response = await api.post('/enviarMensagemContatoExterno', formData, config);
+    const response = await api.post(`/${ENDPOINTS.SEND_CONTACT}`, formData, config);
     return response.data;
   } catch (error) {
     console.error('Erro ao enviar mensagem de contato:', error);
@@ -310,12 +337,12 @@ export const sendContactMessage = async (data: { nome: string; email: string; me
 /**
  * Busca a lista de transmissões ao vivo
  * @param eliveId ID opcional da transmissão
- * @param userTz Fuso horário do usuário (padrão: America/Sao_Paulo)
+ * @param userTz Fuso horário do usuário (padrão definido em .env)
  * @returns Lista de transmissões ao vivo
  */
-export const getListaTransmissao = async (eliveId: string = '', userTz: string = 'America/Sao_Paulo'): Promise<any> => {
+export const getListaTransmissao = async (eliveId: string = '', userTz: string = DEFAULT_TIMEZONE): Promise<any> => {
   try {
-    const response = await axios.get(`https://elive.neoidea.com.br/services.php?a=getListaTransmissao&elive_id=${eliveId}&user_tz=${encodeURIComponent(userTz)}`);
+    const response = await axios.get(`${ELIVE_API_URL}?a=getListaTransmissao&elive_id=${eliveId}&user_tz=${encodeURIComponent(userTz)}`);
     return response.data;
   } catch (error) {
     console.error('Erro ao obter lista de transmissões:', error);
@@ -325,7 +352,7 @@ export const getListaTransmissao = async (eliveId: string = '', userTz: string =
 
 export const getPodcastData = async (id: string | number): Promise<any> => {
   try {
-    const token = localStorage.getItem('@NeoIdea:token');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) {
       throw new Error('Usuário não autenticado');
     }
@@ -334,7 +361,7 @@ export const getPodcastData = async (id: string | number): Promise<any> => {
     params.append('action', 'music');
     params.append('id', id.toString());
     params.append('mdi_id', MDI_ID);
-    params.append('lang', 'ptbr');
+    params.append('lang', getEnv('VITE_DEFAULT_LANG', 'ptbr'));
     params.append('serial', 'web version');
 
     const config = {
@@ -346,8 +373,7 @@ export const getPodcastData = async (id: string | number): Promise<any> => {
       }
     };
 
-    const url = 'https://app.neoidea.com.br/sistema/neowebservice/servercontent_cloudfront.php';
-    const response = await axios.post(url, params, config);
+    const response = await axios.post(PODCAST_API_URL, params, config);
 
     return response.data;
   } catch (error) {
@@ -357,12 +383,14 @@ export const getPodcastData = async (id: string | number): Promise<any> => {
 };
 
 export const getPodcastAudioUrl = (podcastId: string, trackId: string): string => {
-  return `https://app.neoidea.com.br/sistema/neowebservice/servercontent_cloudfront.php?action=music&id=${podcastId}&track=${trackId}`;
+  return `${PODCAST_API_URL}?action=music&id=${podcastId}&track=${trackId}`;
 };
 
+
+
 export const logout = () => {
-  localStorage.removeItem('@NeoIdea:token');
-  localStorage.removeItem('@NeoIdea:user');
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(USER_DATA_KEY);
 };
 
 export default api;

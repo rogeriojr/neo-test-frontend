@@ -10,6 +10,9 @@ import ContactModal from "./ContactModal";
 import PodcastModal from "./PodcastModal";
 import EliveModal from "./EliveModal";
 import CookieConsent from "./CookieConsent";
+import { useProfileModalStore } from "../stores/profileModalStore";
+
+// O store do modal de perfil foi movido para src/stores/profileModalStore.ts
 
 const GlobalStyle = createGlobalStyle`
   * {
@@ -55,24 +58,12 @@ const MainContainer = styled.div`
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.3);
-    z-index: 0;
+    pointer-events: none;
   }
 
   & > * {
     position: relative;
-    z-index: 1;
   }
-`;
-
-const Header = styled.header`
-  display: flex;
-  justify-content: flex-end;
-  padding: 15px 20px;
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100%;
-  z-index: 10;
 `;
 
 const UserIconButton = styled.button`
@@ -84,15 +75,28 @@ const UserIconButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  transition: background-color 0.3s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 99999;
 
   &:hover {
     background-color: ${({ theme }) => theme.color};
     color: ${({ theme }) => theme.text};
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  @media (max-width: 768px) {
+    width: 45px;
+    height: 45px;
+    top: 15px;
+    right: 15px;
   }
 `;
 
@@ -104,8 +108,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const layout = useThemeStore((state) => state.layout);
   const isLoading = useThemeStore((state) => state.isLoading);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+
+  const isProfileModalOpen = useProfileModalStore((state) => state.isOpen);
+  const setProfileModalOpen = useProfileModalStore((state) => state.setOpen);
 
   const showContactModal = useModalStore((state) => state.showContactModal);
   const contactItem = useModalStore((state) => state.contactItem);
@@ -141,21 +147,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <GlobalStyle />
       <MainContainer>
         {isAuthenticated && (
-          <Header>
-            <UserIconButton onClick={() => setIsProfileModalOpen(true)}>
-              <FaUser />
-            </UserIconButton>
-          </Header>
+          <UserIconButton onClick={() => setProfileModalOpen(true)}>
+            <FaUser />
+          </UserIconButton>
         )}
         {children}
       </MainContainer>
-
-      {/* Modais renderizados fora do MainContainer para garantir que ocupem 100% da tela */}
       {isAuthenticated && (
         <>
           <ProfileModal
             isOpen={isProfileModalOpen}
-            onClose={() => setIsProfileModalOpen(false)}
+            onClose={() => setProfileModalOpen(false)}
           />
           <ContactModal
             isOpen={isContactModalOpen}

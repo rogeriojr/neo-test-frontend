@@ -11,6 +11,31 @@ const GalleryContainer = styled.div`
   flex-direction: column;
   min-height: 100vh;
   padding: 20px;
+  overflow-y: auto;
+  height: 100%;
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
+
+  /* Estilização da barra de rolagem para ser completamente invisível */
+  &::-webkit-scrollbar {
+    width: 0;
+    background: transparent; /* Torna a barra de rolagem transparente */
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 0;
+    border: 0;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
 `;
 
 const Header = styled.header`
@@ -23,6 +48,10 @@ const Header = styled.header`
   border-radius: 8px;
   flex-wrap: wrap;
   gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1010;
+  pointer-events: auto !important;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -47,9 +76,16 @@ const BackButton = styled.button`
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
+  position: relative;
+  z-index: 1011;
+  pointer-events: auto !important;
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  &:active {
+    transform: translateY(1px);
   }
 `;
 
@@ -59,6 +95,7 @@ const VideosGrid = styled.div`
   gap: 25px;
   margin-top: 30px;
   animation: fadeIn 0.5s ease-in-out;
+  padding-bottom: 30px;
 
   @keyframes fadeIn {
     from {
@@ -71,9 +108,20 @@ const VideosGrid = styled.div`
     }
   }
 
+  @media (max-width: 992px) {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
   @media (max-width: 768px) {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 15px;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 0 5px;
   }
 `;
 
@@ -87,6 +135,9 @@ const VideoCard = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 
   &:hover {
     transform: translateY(-5px);
@@ -113,6 +164,10 @@ const VideoThumbnail = styled.img`
       rgba(0, 0, 0, 0) 0%,
       rgba(0, 0, 0, 0.7) 100%
     );
+  }
+
+  @media (max-width: 480px) {
+    height: 200px;
   }
 `;
 
@@ -156,6 +211,14 @@ const SearchContainer = styled.div`
   max-width: 300px;
   transition: all 0.3s ease;
   border: 1px solid transparent;
+  position: relative;
+  z-index: 1011;
+
+  @media (max-width: 768px) {
+    max-width: 100%;
+    margin-top: 10px;
+  }
+  pointer-events: auto !important;
 
   &:focus-within {
     background-color: rgba(255, 255, 255, 0.15);
@@ -176,6 +239,9 @@ const SearchInput = styled.input`
   padding: 5px;
   outline: none;
   font-size: 14px;
+  position: relative;
+  z-index: 1012;
+  pointer-events: auto !important;
 
   &::placeholder {
     color: rgba(255, 255, 255, 0.5);
@@ -190,6 +256,9 @@ const SearchInput = styled.input`
 const SearchIcon = styled.div`
   color: ${({ theme }) => theme.text};
   margin-right: 8px;
+  position: relative;
+  z-index: 1012;
+  pointer-events: none;
 `;
 
 const NoResults = styled.p`
@@ -255,6 +324,7 @@ const VideoGallery = () => {
   }, [searchTerm, videos]);
 
   const handleVideoClick = (video: Video) => {
+    console.log("Video clicked", video.id);
     if (video && video.url) {
       navigate(`/video/${video.id}`, { state: { video } });
     } else {
@@ -264,10 +334,12 @@ const VideoGallery = () => {
   };
 
   const handleBack = () => {
+    console.log("Back button clicked");
     navigate("/");
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("Search input changed", e.target.value);
     setSearchTerm(e.target.value);
   };
 
@@ -282,7 +354,15 @@ const VideoGallery = () => {
       <GalleryContainer>
         <Header>
           <Title>Carregando...</Title>
-          <BackButton onClick={handleBack}>Voltar</BackButton>
+          <BackButton
+            onClick={(e) => {
+              console.log("Back button clicked directly");
+              e.stopPropagation();
+              handleBack();
+            }}
+          >
+            Voltar
+          </BackButton>
         </Header>
         <div
           style={{
@@ -313,7 +393,15 @@ const VideoGallery = () => {
       <GalleryContainer>
         <Header>
           <Title>Erro</Title>
-          <BackButton onClick={handleBack}>Voltar</BackButton>
+          <BackButton
+            onClick={(e) => {
+              console.log("Back button clicked directly");
+              e.stopPropagation();
+              handleBack();
+            }}
+          >
+            Voltar
+          </BackButton>
         </Header>
         <p style={{ color: "white" }}>{error}</p>
       </GalleryContainer>
@@ -321,7 +409,12 @@ const VideoGallery = () => {
   }
 
   return (
-    <GalleryContainer>
+    <GalleryContainer
+      onClick={(e) => {
+        console.log("Gallery container clicked");
+        e.stopPropagation();
+      }}
+    >
       <Header>
         <Title>{galleryTitle}</Title>
         <SearchContainer>
@@ -336,7 +429,15 @@ const VideoGallery = () => {
             autoComplete="off"
           />
         </SearchContainer>
-        <BackButton onClick={handleBack}>Voltar</BackButton>
+        <BackButton
+          onClick={(e) => {
+            console.log("Back button clicked directly");
+            e.stopPropagation();
+            handleBack();
+          }}
+        >
+          Voltar
+        </BackButton>
       </Header>
 
       {videos.length === 0 ? (

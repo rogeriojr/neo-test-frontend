@@ -82,6 +82,7 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             error: null,
           });
+          window.location.href = '/login';
         } catch (err: any) {
           set({ error: err.message || 'Erro ao realizar logout' });
         }

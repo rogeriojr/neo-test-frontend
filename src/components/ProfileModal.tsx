@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useAuthStore } from "../stores/authStore";
-import { FaSpinner, FaUser, FaTimes } from "react-icons/fa";
-import axios from "axios";
+import { FaSpinner, FaUser, FaTimes, FaSignOutAlt } from "react-icons/fa";
+import { useNotification } from "../contexts/NotificationContext";
+import {
+  getProfile,
+  updateProfile,
+  ProfileData,
+} from "../services/profileService";
+import { getErrorMessage } from "../utils/errorHandler";
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -254,25 +260,6 @@ const SocialLinks = styled.div`
   margin-top: 10px;
 `;
 
-interface ProfileData {
-  codigo: number;
-  nome: string;
-  sobrenome: string;
-  email: string;
-  nascimento: string;
-  sexo: string;
-  celular_ddi: string;
-  celular_numero: string;
-  cep: string;
-  endereco: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidade: string;
-  estado: string;
-  pais: string;
-}
-
 interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -280,9 +267,13 @@ interface ProfileModalProps {
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [formData, setFormData] = useState<ProfileData>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuthStore();
+  const { showNotification } = useNotification();
+  const logout = useAuthStore.getState().logout;
 
   useEffect(() => {
     if (isOpen && user) {
@@ -295,41 +286,70 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       setIsLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("@NeoIdea:token");
+      const response = await getProfile();
 
-      if (!token) {
-        throw new Error("Token não encontrado");
-      }
-      const api = axios.create({
-        baseURL: import.meta.env.VITE_API_BASE_URL,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const formData = new FormData();
-      const response = await api.post("/obterPerfilExterno", formData);
-
-      if (response.data && response.data.retorno && response.data.dados) {
-        setProfileData(response.data.dados);
+      if (response && response.retorno && response.dados) {
+        setProfileData(response.dados);
+        setFormData(response.dados);
       } else {
         throw new Error(
-          response.data.descricao ||
-            response.data.erro ||
-            "Erro ao obter dados do perfil"
+          response.descricao || response.erro || "Erro ao obter dados do perfil"
         );
       }
     } catch (err: any) {
-      setError(err.message || "Erro ao carregar dados do perfil");
+      const errorMsg = getErrorMessage(err);
+      setError(errorMsg);
+      showNotification("error", errorMsg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Alterações salvas com sucesso!");
+    try {
+      setIsSaving(true);
+      setError(null);
+
+      const response = await updateProfile(formData);
+
+      if (response && response.retorno) {
+        showNotification("success", "Perfil atualizado com sucesso!");
+        fetchProfileData();
+      } else {
+        throw new Error(
+          response.descricao ||
+            response.erro ||
+            "Erro ao atualizar dados do perfil"
+        );
+      }
+    } catch (err: any) {
+      const errorMsg = getErrorMessage(err);
+      setError(errorMsg);
+      showNotification("error", errorMsg);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleLogout = () => {
+    try {
+      logout();
+      showNotification("info", "Você saiu da sua conta");
+    } catch (err: any) {
+      const errorMsg = getErrorMessage(err);
+      showNotification("error", errorMsg);
+    }
   };
 
   if (!isOpen) return null;
@@ -358,6 +378,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         ) : error ? (
           <div style={{ color: "red", textAlign: "center", padding: "20px" }}>
             {error}
+            <div style={{ marginTop: "20px", textAlign: "center" }}>
+              <Button type="button" onClick={fetchProfileData}>
+                Tentar novamente
+              </Button>
+            </div>
           </div>
         ) : profileData ? (
           <Form onSubmit={handleSubmit}>
@@ -379,11 +404,21 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
               <FormRow style={{ marginTop: "10px" }}>
                 <FormGroup>
                   <Label>Nome</Label>
-                  <Input type="text" defaultValue={profileData.nome} />
+                  <Input
+                    type="text"
+                    name="nome"
+                    value={formData.nome || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label>Sobrenome</Label>
-                  <Input type="text" defaultValue={profileData.sobrenome} />
+                  <Input
+                    type="text"
+                    name="sobrenome"
+                    value={formData.sobrenome || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
               </FormRow>
 
@@ -404,13 +439,29 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
               <FormRow style={{ marginTop: "10px" }}>
                 <FormGroup>
                   <Label>E-mail</Label>
-                  <Input type="email" defaultValue={profileData.email} />
+                  <Input
+                    type="email"
+                    name="email"
+                    value={formData.email || ""}
+                    onChange={handleInputChange}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <Label>DDI</Label>
+                  <Input
+                    type="text"
+                    name="celular_ddi"
+                    value={formData.celular_ddi || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label>Celular</Label>
                   <Input
                     type="tel"
-                    defaultValue={`(${profileData.celular_ddi}) ${profileData.celular_numero}`}
+                    name="celular_numero"
+                    value={formData.celular_numero || ""}
+                    onChange={handleInputChange}
                   />
                 </FormGroup>
               </FormRow>
@@ -418,11 +469,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
               <FormRow style={{ marginTop: "10px" }}>
                 <FormGroup>
                   <Label>Nascimento</Label>
-                  <Input type="text" defaultValue={profileData.nascimento} />
+                  <Input
+                    type="text"
+                    name="nascimento"
+                    value={formData.nascimento || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label>Gênero</Label>
-                  <Select defaultValue={profileData.sexo}>
+                  <Select
+                    name="sexo"
+                    value={formData.sexo || ""}
+                    onChange={handleInputChange}
+                  >
                     <option value="masculino">Masculino</option>
                     <option value="feminino">Feminino</option>
                   </Select>
@@ -436,50 +496,120 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
               <FormRow style={{ marginTop: "10px" }}>
                 <FormGroup>
                   <Label>CEP</Label>
-                  <Input type="text" defaultValue={profileData.cep} />
+                  <Input
+                    type="text"
+                    name="cep"
+                    value={formData.cep || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label>Endereço</Label>
-                  <Input type="text" defaultValue={profileData.endereco} />
+                  <Input
+                    type="text"
+                    name="endereco"
+                    value={formData.endereco || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
               </FormRow>
 
               <FormRow style={{ marginTop: "10px" }}>
                 <FormGroup>
                   <Label>Número</Label>
-                  <Input type="text" defaultValue={profileData.numero} />
+                  <Input
+                    type="text"
+                    name="numero"
+                    value={formData.numero || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label>Complemento</Label>
-                  <Input type="text" defaultValue={profileData.complemento} />
+                  <Input
+                    type="text"
+                    name="complemento"
+                    value={formData.complemento || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
               </FormRow>
 
               <FormRow style={{ marginTop: "10px" }}>
                 <FormGroup>
                   <Label>Bairro</Label>
-                  <Input type="text" defaultValue={profileData.bairro} />
+                  <Input
+                    type="text"
+                    name="bairro"
+                    value={formData.bairro || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label>Cidade</Label>
-                  <Input type="text" defaultValue={profileData.cidade} />
+                  <Input
+                    type="text"
+                    name="cidade"
+                    value={formData.cidade || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
               </FormRow>
 
               <FormRow style={{ marginTop: "10px" }}>
                 <FormGroup>
                   <Label>Estado</Label>
-                  <Input type="text" defaultValue={profileData.estado} />
+                  <Input
+                    type="text"
+                    name="estado"
+                    value={formData.estado || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
                 <FormGroup>
                   <Label>País</Label>
-                  <Input type="text" defaultValue={profileData.pais} />
+                  <Input
+                    type="text"
+                    name="pais"
+                    value={formData.pais || ""}
+                    onChange={handleInputChange}
+                  />
                 </FormGroup>
               </FormRow>
             </Section>
 
-            <Button type="submit" style={{ minWidth: "150px" }}>
-              Salvar
+            <Button
+              type="submit"
+              style={{ minWidth: "150px" }}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <FaSpinner
+                    style={{
+                      marginRight: "8px",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                minWidth: "150px",
+                marginTop: "15px",
+                backgroundColor: "#d32f2f",
+                color: "white",
+              }}
+            >
+              <FaSignOutAlt style={{ marginRight: "8px" }} />
+              Sair
             </Button>
 
             <ContactInfo>
@@ -490,13 +620,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                   /@biquini
                 </ContactText>
               </SocialLinks>
-              <Button
-                type="button"
-                onClick={() => useAuthStore.getState().logout()}
-                style={{ marginTop: "20px", backgroundColor: "#d32f2f" }}
-              >
-                Sair
-              </Button>
             </ContactInfo>
           </Form>
         ) : null}

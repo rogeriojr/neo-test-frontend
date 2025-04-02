@@ -166,7 +166,6 @@ interface LocationState {
   video: Video;
 }
 
-// Função para extrair o ID do vídeo do YouTube de uma URL
 const getYouTubeVideoId = (url: string): string | null => {
   const regExp =
     /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -174,7 +173,6 @@ const getYouTubeVideoId = (url: string): string | null => {
   return match && match[2].length === 11 ? match[2] : null;
 };
 
-// Verifica se a URL é do YouTube
 const isYouTubeUrl = (url: string): boolean => {
   return url.includes("youtube.com") || url.includes("youtu.be");
 };
@@ -205,13 +203,12 @@ const VideoPlayer = () => {
     if (videoData) {
       setCurrentVideo(videoData);
       setVideoError(false);
-       
-      // Verifica se é um vídeo do YouTube
+
       if (videoData.url && isYouTubeUrl(videoData.url)) {
         setIsYouTubeVideo(true);
         const videoId = getYouTubeVideoId(videoData.url);
         setYoutubeVideoId(videoId);
-        console.log('YouTube video ID:', videoId);
+        console.log("YouTube video ID:", videoId);
       } else {
         setIsYouTubeVideo(false);
         setYoutubeVideoId(null);
@@ -366,27 +363,29 @@ const VideoPlayer = () => {
             title={currentVideo?.titulo || "Vídeo do YouTube"}
           />
         ) : videoError ? (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            color: 'white',
-            padding: '20px',
-            textAlign: 'center'
-          }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "white",
+              padding: "20px",
+              textAlign: "center",
+            }}
+          >
             <p>Não foi possível reproduzir este vídeo.</p>
-            <button 
+            <button
               onClick={handleBack}
               style={{
-                marginTop: '20px',
-                padding: '10px 20px',
-                background: 'rgba(255,255,255,0.2)',
-                border: 'none',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer'
+                marginTop: "20px",
+                padding: "10px 20px",
+                background: "rgba(255,255,255,0.2)",
+                border: "none",
+                borderRadius: "4px",
+                color: "white",
+                cursor: "pointer",
               }}
             >
               Voltar para a galeria
